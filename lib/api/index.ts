@@ -32,3 +32,4 @@ app.get('/openapi.json', (ctx) => ctx.json(docs));
 app.get('/reference', Scalar({ content: docs }));
 
 export default app;
+export * as swipeinsight from './swipeinsight/router.js';
