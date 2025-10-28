@@ -8,3 +8,4 @@ const handler: Handler = (ctx) => {
 };
 
 export default handler;
+export * as swipeinsight from './swipeinsight/router.js';
