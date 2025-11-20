@@ -64,7 +64,7 @@ async function handler(ctx) {
     // Start Apify Actor run
     const runResponse = await got({
         method: 'post',
-        url: 'https://api.apify.com/v2/acts/curious_coder~facebook-ads-library-scraper/runs',
+        url: 'https://api.apify.com/v2/acts/XtaWFhbtfxyzqrFmd/runs',
         searchParams: {
             token: apifyToken,
         },
@@ -91,7 +91,7 @@ async function handler(ctx) {
             // eslint-disable-next-line no-await-in-loop
             const statusResponse = await got({
                 method: 'get',
-                url: `https://api.apify.com/v2/acts/curious_coder~facebook-ads-library-scraper/runs/${runId}`,
+                url: `https://api.apify.com/v2/acts/XtaWFhbtfxyzqrFmd/runs/${runId}`,
                 searchParams: {
                     token: apifyToken,
                 },
