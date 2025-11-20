@@ -3,6 +3,7 @@ import got from '@/utils/got';
 import { parseDate } from '@/utils/parse-date';
 import { config } from '@/config';
 import ConfigNotFoundError from '@/errors/types/config-not-found';
+import logger from '@/utils/logger';
 
 export const route: Route = {
     path: '/search/:query',
@@ -136,51 +137,71 @@ async function handler(ctx) {
 
     const ads = datasetResponse.data;
 
+    // Debug: Log first ad structure to understand response format
+    if (ads.length > 0) {
+        logger.debug('Meta Ad Library - Sample ad data structure:', JSON.stringify(ads[0], null, 2));
+    }
+
     // Transform ads into RSS items
     const items = ads.map((ad) => {
-        const title = ad.adContent || ad.pageInfo?.pageName || 'Untitled Ad';
-        const link = ad.adArchiveID ? `https://www.facebook.com/ads/library/?id=${ad.adArchiveID}` : ad.url || searchUrl;
+        // Handle multiple possible field name variations from Apify
+        const adText = ad.adContent || ad.text || ad.body || ad.adText || ad.snippet || '';
+        const advertiserName = ad.pageInfo?.pageName || ad.pageName || ad.advertiserName || ad.advertiser || ad.page || '';
+        const adId = ad.adArchiveID || ad.adId || ad.id || ad.archiveID || '';
+        const adImages = ad.images || ad.imageUrls || (ad.imageUrl ? [ad.imageUrl] : []) || ad.media || [];
+        const adStartDate = ad.startDate || ad.start_date || ad.createdTime || ad.created_time || '';
+        const adPlatforms = ad.platforms || ad.platform ? [ad.platform] : [];
+        const adCTA = ad.ctaText || ad.cta || ad.ctaButton || ad.callToAction || '';
+        const adUrl = ad.url || ad.adUrl || ad.link || '';
+
+        const title = adText.slice(0, 100) || advertiserName || 'Ad from ' + query;
+        const link = adId ? `https://www.facebook.com/ads/library/?id=${adId}` : adUrl || searchUrl;
 
         // Build description with ad details
         let description = '';
 
         // Add ad images if available
-        if (ad.images && ad.images.length > 0) {
-            description += ad.images.map((img) => `<img src="${img}" style="max-width:100%; margin:10px 0;">`).join('');
+        if (adImages && adImages.length > 0) {
+            description += adImages.map((img) => `<img src="${img}" style="max-width:100%; margin:10px 0;">`).join('');
         }
 
         // Add ad content/text
-        if (ad.adContent) {
-            description += `<p><strong>Ad Copy:</strong></p><p>${ad.adContent.replaceAll('\n', '<br>')}</p>`;
+        if (adText) {
+            description += `<p><strong>Ad Copy:</strong></p><p>${adText.replaceAll('\n', '<br>')}</p>`;
         }
 
         // Add page info
-        if (ad.pageInfo?.pageName) {
-            description += `<p><strong>Advertiser:</strong> ${ad.pageInfo.pageName}</p>`;
+        if (advertiserName) {
+            description += `<p><strong>Advertiser:</strong> ${advertiserName}</p>`;
         }
 
         // Add start date
-        if (ad.startDate) {
-            description += `<p><strong>Started:</strong> ${ad.startDate}</p>`;
+        if (adStartDate) {
+            description += `<p><strong>Started:</strong> ${adStartDate}</p>`;
         }
 
         // Add platforms
-        if (ad.platforms && ad.platforms.length > 0) {
-            description += `<p><strong>Platforms:</strong> ${ad.platforms.join(', ')}</p>`;
+        if (adPlatforms && adPlatforms.length > 0) {
+            description += `<p><strong>Platforms:</strong> ${adPlatforms.join(', ')}</p>`;
         }
 
         // Add CTA button if available
-        if (ad.ctaText) {
-            description += `<p><strong>CTA:</strong> ${ad.ctaText}</p>`;
+        if (adCTA) {
+            description += `<p><strong>CTA:</strong> ${adCTA}</p>`;
+        }
+
+        // Add any additional fields for debugging
+        if (!adText && !advertiserName) {
+            description += `<pre>Raw ad data: ${JSON.stringify(ad, null, 2)}</pre>`;
         }
 
         return {
             title,
             link,
             description: description || 'No description available',
-            pubDate: ad.startDate ? parseDate(ad.startDate) : new Date(),
-            guid: ad.adArchiveID || link,
-            author: ad.pageInfo?.pageName || 'Unknown Advertiser',
+            pubDate: adStartDate ? parseDate(adStartDate) : new Date(),
+            guid: adId || link,
+            author: advertiserName || 'Unknown Advertiser',
         };
     });
 
