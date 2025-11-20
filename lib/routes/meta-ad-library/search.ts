@@ -1,6 +1,7 @@
 import { Route } from '@/types';
 import got from '@/utils/got';
 import { parseDate } from '@/utils/parse-date';
+import { config } from '@/config';
 import ConfigNotFoundError from '@/errors/types/config-not-found';
 
 export const route: Route = {
@@ -45,7 +46,7 @@ async function handler(ctx) {
     const count = Number.parseInt(ctx.req.query('count') || '30', 10);
 
     // Get Apify token from config
-    const apifyToken = ctx.app.config.apify?.token;
+    const apifyToken = config.apify?.token;
     if (!apifyToken) {
         throw new ConfigNotFoundError('Meta Ad Library RSS requires Apify API token. Please configure APIFY_TOKEN in your environment variables.');
     }
