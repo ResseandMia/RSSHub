@@ -98,6 +98,9 @@ export type Config = {
     };
 
     // Route-specific Configurations
+    apify: {
+        token?: string;
+    };
     bilibili: {
         cookies: Record<string, string | undefined>;
         dmImgList?: string;
@@ -575,6 +578,9 @@ const calculateValue = () => {
         },
 
         // Route-specific Configurations
+        apify: {
+            token: envs.APIFY_TOKEN,
+        },
         bilibili: {
             cookies: bilibili_cookies,
             dmImgList: envs.BILIBILI_DM_IMG_LIST,
