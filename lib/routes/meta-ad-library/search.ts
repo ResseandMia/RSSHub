@@ -54,11 +54,18 @@ async function handler(ctx) {
     // Construct Facebook Ad Library search URL
     const searchUrl = `https://www.facebook.com/ads/library/?active_status=${activeStatus}&ad_type=${adType}&country=${country}&q=${encodeURIComponent(query)}&search_type=keyword_unordered&media_type=all`;
 
-    // Prepare Apify Actor input
+    // Prepare Apify Actor input (based on actual working format)
     const actorInput = {
-        action: 'scrapeSearchResults',
-        searchUrl,
         count,
+        scrapeAdDetails: false,
+        'scrapePageAds.activeStatus': activeStatus,
+        'scrapePageAds.countryCode': country,
+        urls: [
+            {
+                url: searchUrl,
+            },
+        ],
+        period: '',
     };
 
     // Start Apify Actor run
