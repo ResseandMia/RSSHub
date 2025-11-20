@@ -149,30 +149,45 @@ async function handler(ctx) {
         // Helper function to safely get nested properties
         const getNestedProp = (obj, path) => path.split('.').reduce((current, prop) => current?.[prop], obj);
 
+        // Helper function to safely convert to string
+        const toString = (value) => {
+            if (value === null || value === undefined) {
+                return '';
+            }
+            if (typeof value === 'string') {
+                return value;
+            }
+            if (typeof value === 'number' || typeof value === 'boolean') {
+                return String(value);
+            }
+            // For arrays or objects, return empty string
+            return '';
+        };
+
         // Handle multiple possible field name variations from Apify
         // Try all common field names for ad content/text
-        const adText = ad.adContent || ad.text || ad.body || ad.adText || ad.snippet || ad.adCreativeBody || ad.adCreativeBodies?.[0] || ad.creative?.body || '';
+        const adText = toString(ad.adContent || ad.text || ad.body || ad.adText || ad.snippet || ad.adCreativeBody || ad.adCreativeBodies?.[0] || ad.creative?.body);
 
         // Try all common field names for advertiser/page name
-        const advertiserName = ad.pageInfo?.pageName || ad.pageName || ad.advertiserName || ad.advertiser || ad.page || ad.pageData?.pageName || getNestedProp(ad, 'pageInfo.name') || '';
+        const advertiserName = toString(ad.pageInfo?.pageName || ad.pageName || ad.advertiserName || ad.advertiser || ad.page || ad.pageData?.pageName || getNestedProp(ad, 'pageInfo.name'));
 
         // Try all common field names for ad ID
-        const adId = ad.adArchiveID || ad.adId || ad.id || ad.archiveID || ad.libraryID || ad.adLibraryID || '';
+        const adId = toString(ad.adArchiveID || ad.adId || ad.id || ad.archiveID || ad.libraryID || ad.adLibraryID);
 
         // Try all common field names for images
         const adImages = ad.images || ad.imageUrls || ad.adCreativeImages || ad.snapshot?.images || (ad.imageUrl ? [ad.imageUrl] : []) || ad.media || ad.adCreativeLinkCaption?.images || [];
 
         // Try all common field names for dates
-        const adStartDate = ad.startDate || ad.start_date || ad.createdTime || ad.created_time || ad.adDeliveryStartTime || ad.publishedDate || '';
+        const adStartDate = toString(ad.startDate || ad.start_date || ad.createdTime || ad.created_time || ad.adDeliveryStartTime || ad.publishedDate);
 
         // Try all common field names for platforms
         const adPlatforms = ad.platforms || (ad.platform ? [ad.platform] : []) || ad.publisherPlatform || [];
 
         // Try all common field names for CTA
-        const adCTA = ad.ctaText || ad.cta || ad.ctaButton || ad.callToAction || ad.adCreativeLinkCaption?.callToActionType || '';
+        const adCTA = toString(ad.ctaText || ad.cta || ad.ctaButton || ad.callToAction || ad.adCreativeLinkCaption?.callToActionType);
 
         // Try all common field names for URL
-        const adUrl = ad.url || ad.adUrl || ad.link || ad.adSnapshotUrl || ad.snapshot?.link || '';
+        const adUrl = toString(ad.url || ad.adUrl || ad.link || ad.adSnapshotUrl || ad.snapshot?.link);
 
         // Build title from ad text (first 100 chars), fallback to advertiser name, then query
         let title = '';
