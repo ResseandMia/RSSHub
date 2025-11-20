@@ -137,24 +137,57 @@ async function handler(ctx) {
 
     const ads = datasetResponse.data;
 
-    // Debug: Log first ad structure to understand response format
+    // Debug: Log response structure
     if (ads.length > 0) {
-        logger.debug('Meta Ad Library - Sample ad data structure:', JSON.stringify(ads[0], null, 2));
+        logger.info(`Meta Ad Library - Retrieved ${ads.length} ads for query: ${query}`);
+        logger.info('Meta Ad Library - Sample ad fields:', Object.keys(ads[0]).join(', '));
+        logger.debug('Meta Ad Library - Full sample ad:', JSON.stringify(ads[0], null, 2));
     }
 
     // Transform ads into RSS items
     const items = ads.map((ad) => {
-        // Handle multiple possible field name variations from Apify
-        const adText = ad.adContent || ad.text || ad.body || ad.adText || ad.snippet || '';
-        const advertiserName = ad.pageInfo?.pageName || ad.pageName || ad.advertiserName || ad.advertiser || ad.page || '';
-        const adId = ad.adArchiveID || ad.adId || ad.id || ad.archiveID || '';
-        const adImages = ad.images || ad.imageUrls || (ad.imageUrl ? [ad.imageUrl] : []) || ad.media || [];
-        const adStartDate = ad.startDate || ad.start_date || ad.createdTime || ad.created_time || '';
-        const adPlatforms = ad.platforms || ad.platform ? [ad.platform] : [];
-        const adCTA = ad.ctaText || ad.cta || ad.ctaButton || ad.callToAction || '';
-        const adUrl = ad.url || ad.adUrl || ad.link || '';
+        // Helper function to safely get nested properties
+        const getNestedProp = (obj, path) => path.split('.').reduce((current, prop) => current?.[prop], obj);
 
-        const title = adText.slice(0, 100) || advertiserName || 'Ad from ' + query;
+        // Handle multiple possible field name variations from Apify
+        // Try all common field names for ad content/text
+        const adText = ad.adContent || ad.text || ad.body || ad.adText || ad.snippet || ad.adCreativeBody || ad.adCreativeBodies?.[0] || ad.creative?.body || '';
+
+        // Try all common field names for advertiser/page name
+        const advertiserName = ad.pageInfo?.pageName || ad.pageName || ad.advertiserName || ad.advertiser || ad.page || ad.pageData?.pageName || getNestedProp(ad, 'pageInfo.name') || '';
+
+        // Try all common field names for ad ID
+        const adId = ad.adArchiveID || ad.adId || ad.id || ad.archiveID || ad.libraryID || ad.adLibraryID || '';
+
+        // Try all common field names for images
+        const adImages = ad.images || ad.imageUrls || ad.adCreativeImages || ad.snapshot?.images || (ad.imageUrl ? [ad.imageUrl] : []) || ad.media || ad.adCreativeLinkCaption?.images || [];
+
+        // Try all common field names for dates
+        const adStartDate = ad.startDate || ad.start_date || ad.createdTime || ad.created_time || ad.adDeliveryStartTime || ad.publishedDate || '';
+
+        // Try all common field names for platforms
+        const adPlatforms = ad.platforms || (ad.platform ? [ad.platform] : []) || ad.publisherPlatform || [];
+
+        // Try all common field names for CTA
+        const adCTA = ad.ctaText || ad.cta || ad.ctaButton || ad.callToAction || ad.adCreativeLinkCaption?.callToActionType || '';
+
+        // Try all common field names for URL
+        const adUrl = ad.url || ad.adUrl || ad.link || ad.adSnapshotUrl || ad.snapshot?.link || '';
+
+        // Build title from ad text (first 100 chars), fallback to advertiser name, then query
+        let title = '';
+        if (adText && adText.trim()) {
+            // Take first 100 chars of ad text, clean it up
+            title = adText.replaceAll(/\s+/g, ' ').trim().slice(0, 100);
+            if (adText.length > 100) {
+                title += '...';
+            }
+        } else if (advertiserName && advertiserName.trim()) {
+            title = `Ad by ${advertiserName}`;
+        } else {
+            title = `Ad for ${query}`;
+        }
+
         const link = adId ? `https://www.facebook.com/ads/library/?id=${adId}` : adUrl || searchUrl;
 
         // Build description with ad details
@@ -166,17 +199,22 @@ async function handler(ctx) {
         }
 
         // Add ad content/text
-        if (adText) {
+        if (adText && adText.trim()) {
             description += `<p><strong>Ad Copy:</strong></p><p>${adText.replaceAll('\n', '<br>')}</p>`;
         }
 
         // Add page info
-        if (advertiserName) {
+        if (advertiserName && advertiserName.trim()) {
             description += `<p><strong>Advertiser:</strong> ${advertiserName}</p>`;
         }
 
+        // Add ad ID
+        if (adId && adId.trim()) {
+            description += `<p><strong>Ad Library ID:</strong> ${adId}</p>`;
+        }
+
         // Add start date
-        if (adStartDate) {
+        if (adStartDate && adStartDate.trim()) {
             description += `<p><strong>Started:</strong> ${adStartDate}</p>`;
         }
 
@@ -186,13 +224,15 @@ async function handler(ctx) {
         }
 
         // Add CTA button if available
-        if (adCTA) {
+        if (adCTA && adCTA.trim()) {
             description += `<p><strong>CTA:</strong> ${adCTA}</p>`;
         }
 
-        // Add any additional fields for debugging
-        if (!adText && !advertiserName) {
-            description += `<pre>Raw ad data: ${JSON.stringify(ad, null, 2)}</pre>`;
+        // If no meaningful content was extracted, show available fields for debugging
+        if (!adText && !advertiserName && !adImages.length) {
+            description += '<p><em>Note: Could not extract standard ad fields from response.</em></p>';
+            description += `<p><strong>Available fields:</strong> ${Object.keys(ad).join(', ')}</p>`;
+            description += `<details><summary>Show raw data</summary><pre>${JSON.stringify(ad, null, 2)}</pre></details>`;
         }
 
         return {
