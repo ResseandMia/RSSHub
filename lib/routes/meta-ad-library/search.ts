@@ -27,6 +27,12 @@ export const route: Route = {
     name: 'Meta Ad Library Search',
     maintainers: ['ResseandMia'],
     handler,
+    radar: [
+        {
+            source: ['facebook.com/ads/library'],
+            target: '/search/:query',
+        },
+    ],
     description: `Track competitor Facebook/Instagram ads via Meta's Ad Library.
 
 Query parameters:
